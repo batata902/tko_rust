@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 
-static enabled: AtomicBool = AtomicBool::new(true);
+static ENABLED: AtomicBool = AtomicBool::new(true);
 pub struct AnsiColor;
 
 impl AnsiColor {
@@ -34,7 +34,7 @@ impl AnsiColor {
     }
 
     pub fn colour(modifiers: &str, text: &str) -> String {
-        if !enabled.load(Ordering::Relaxed) {
+        if !ENABLED.load(Ordering::Relaxed) {
             return text.to_string();
         }
         let mut output = String::new();
