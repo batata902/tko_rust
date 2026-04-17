@@ -15,19 +15,19 @@ pub mod Keys {
 }
 
 pub struct TaskInfo {
-    rate: i32,
+    pub rate: i32,
 
-    study: i32,
+    pub study: i32,
 
-    feedback: bool,
-    friend: String,
+    pub feedback: bool,
+    pub friend: String,
 
-    guided: bool,
-    ia_concept: bool,
-    ia_problem: bool,
-    ia_code: bool,
-    ia_debug: bool,
-    ia_refactor: bool
+    pub guided: bool,
+    pub ia_concept: bool,
+    pub ia_problem: bool,
+    pub ia_code: bool,
+    pub ia_debug: bool,
+    pub ia_refactor: bool
 }
 
 impl TaskInfo {
