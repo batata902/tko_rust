@@ -14,6 +14,7 @@ pub mod Keys {
     pub static feedback_str: &str = "self";
 }
 
+#[derive(Clone)]
 pub struct TaskInfo {
     pub rate: i32,
 
