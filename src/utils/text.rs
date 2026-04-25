@@ -1,12 +1,12 @@
 use std::{ops::Add, sync::atomic::{AtomicBool, Ordering}};
-use serde::de::value;
+use std::borrow::Cow;
 use unicode_normalization::UnicodeNormalization;
 
 static ENABLED: AtomicBool = AtomicBool::new(true);
 
 #[derive(PartialEq)]
-pub enum AddValue {
-    Str(String),
+pub enum AddValue <'a> {
+    Str(Cow<'a, String>),
     Token(Token),
     Text(Text),
     Tuple((String, String))
@@ -63,6 +63,7 @@ impl AnsiColor {
     }
 }
 
+#[derive(Clone)]
 pub struct Token {
     text: String,
     fmt: String
@@ -93,7 +94,7 @@ impl PartialEq for Token {
     }    
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub struct Text {
     value: String,
     data: Vec<Token>,
@@ -160,7 +161,7 @@ impl Text {
 
         match value {
             AddValue::Str(val) => {
-                self.add(Some(AddValue::Token(Token::new(val, fmt))));
+                self.add(Some(AddValue::Token(Token::new(val.to_string(), fmt))));
             },
             AddValue::Token(token) => {
                 self.add(Some(AddValue::Token(Token::new(token.text, fmt))));

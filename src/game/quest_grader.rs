@@ -4,6 +4,12 @@ pub struct Elem {
     percent: f64
 }
 
+impl Elem {
+    pub fn new(opt: bool, value: i32, percent: f64) -> Self {
+        Self { opt, value, percent }
+    }
+}
+
 pub struct QuestGrader;
 
 impl QuestGrader {

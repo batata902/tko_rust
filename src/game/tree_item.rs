@@ -1,5 +1,6 @@
 use crate::utils::text::Text;
 
+#[derive(Clone)]
 pub struct TreeItem {
     __remote_name: String,
     __key: String,

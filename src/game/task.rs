@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::fmt;
+use std::borrow::Cow;
 
 
 use crate::game::tree_item::TreeItem;
@@ -38,6 +39,7 @@ pub enum TaskEdit {
     EDIT
 }
 
+#[derive(Clone)]
 pub struct TaskGrader{
     info: Rc<RefCell<TaskInfo>>,
     loss: Rc<TaskLoss>,
@@ -119,33 +121,33 @@ impl TaskGrader {
     }
 }
 
-
+#[derive(Clone)]
 pub struct Task {
-    task: TreeItem,
+    pub task: TreeItem,
 
-    line_number: i32,
-    line: String,
-    info: Rc<RefCell<TaskInfo>>,
-    main_idx: i32,
+    pub line_number: i32,
+    pub line: String,
+    pub info: Rc<RefCell<TaskInfo>>,
+    pub main_idx: i32,
 
-    task_test: TaskTest,
-    task_path: TaskMain,
-    task_loss: Rc<TaskLoss>,
-    task_mode: TaskEdit,
+    pub task_test: TaskTest,
+    pub task_path: TaskMain,
+    pub task_loss: Rc<TaskLoss>,
+    pub task_mode: TaskEdit,
 
-    grader: TaskGrader,
+    pub grader: TaskGrader,
 
-    skills: HashMap<String, i32>,
+    pub skills: HashMap<String, i32>,
 
-    xp: i32,
+    pub xp: i32,
 
-    target: String,
-    quest_key: String,
-    remote_name: String,
-    __origin_folder: Option<PathBuf>,
-    __workspace_folder: Option<PathBuf>,
-    __is_recheable: bool,
-    default_min_value: i32
+    pub target: String,
+    pub quest_key: String,
+    pub remote_name: String,
+    pub __origin_folder: Option<PathBuf>,
+    pub __workspace_folder: Option<PathBuf>,
+    pub __is_recheable: bool,
+    pub default_min_value: i32
 }
 
 static str_index: &str = "idx";
@@ -352,22 +354,22 @@ impl Task {
         let prog = value;
         let mut text = Text::new(None, None);
         if prog == 0 {
-            text.add(Some(AddValue::Str("x".to_string())));
+            text.add(Some(AddValue::Str(Cow::Owned("x".to_string()))));
             return text;
         }
         else if prog < min_value {
-            text.addf(color, Some(AddValue::Str(prog.to_string())));
+            text.addf(color, Some(AddValue::Str(Cow::Owned(prog.to_string()))));
             return text;
         }
         else if prog < 10 {
-            text.addf(color, Some(AddValue::Str(prog.to_string())));
+            text.addf(color, Some(AddValue::Str(Cow::Owned(prog.to_string()))));
             return text;
         }
         else if prog == 10 {
-            text.addf(color, Some(AddValue::Str(symbols::CHECK.to_string())));
+            text.addf(color, Some(AddValue::Str(Cow::Borrowed(&symbols::CHECK.to_string()))));
             return text;
         }
-        text.add(Some(AddValue::Str("0".to_string())));
+        text.add(Some(AddValue::Str(Cow::Owned("0".to_string()))));
         text
     }
 
