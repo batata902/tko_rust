@@ -216,7 +216,7 @@ impl Task {
 
     pub fn get_full_title(&self, mut key_pad: Option<usize>, mut pad_char: char) -> String {
         let key: &str = self.task.get_key();
-        if key_pad == None {
+        if key_pad.is_none() {
             key_pad = Some(key.chars().count());
         }
         if !self.task.get_title().contains(&format!("@{key}")) {
@@ -260,7 +260,7 @@ impl Task {
         if self.task_mode == TaskEdit::VIEW {
             return true;
         }
-        self.__origin_folder == None && self.__workspace_folder == None
+        self.__origin_folder.is_none() && self.__workspace_folder.is_none()
     }
 
     pub fn set_remote_view_type(&mut self) -> &mut Self {
@@ -329,7 +329,7 @@ impl Task {
         self.info.borrow().get_kv().len() == 0
     }
 
-    pub fn get_rate_color(&self, value: i32, mut min_value: Option<i32>) -> String {
+    pub fn get_rate_color(&self, value: i32, min_value: Option<i32>) -> String {
         let prog = value;
         if prog == 0 {
             return String::from("c");
