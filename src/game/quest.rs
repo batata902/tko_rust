@@ -7,13 +7,13 @@ use crate::game::task::TaskMain;
 use crate::game::{tree_item::TreeItem, quest_grader::QuestGrader, task::Task};
 use crate::utils::text::{AddValue, Text};
 
-fn startswith(text: String, prefix: String) -> bool {
-    let prefix_len = prefix.chars().count();
-    if prefix_len > text.chars().count() {
-        return false;
-    }
-    text.starts_with(&prefix)
-}
+// fn startswith(text: String, prefix: String) -> bool {
+//     let prefix_len = prefix.chars().count();
+//     if prefix_len > text.chars().count() {
+//         return false;
+//     }
+//     text.starts_with(&prefix)
+// }
 
 pub struct Quest {
     tree: TreeItem,
