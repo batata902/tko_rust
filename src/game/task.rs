@@ -1,12 +1,14 @@
 use std::collections::HashMap;
-use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::cell::RefCell;
+use std::fmt;
 
 
 use crate::game::tree_item::TreeItem;
 use crate::game::task_info::TaskInfo;
 use crate::utils::symbols;
+use crate::utils::text::{AddValue, Text};
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum TaskTest {
@@ -37,13 +39,13 @@ pub enum TaskEdit {
 }
 
 pub struct TaskGrader{
-    info: Rc<TaskInfo>,
+    info: Rc<RefCell<TaskInfo>>,
     loss: Rc<TaskLoss>,
     grades: HashMap<TaskLoss, HashMap<String, i32>>
 }
 
 impl TaskGrader {
-    pub fn new(task_loss: Rc<TaskLoss>, task_info: Rc<TaskInfo>) -> Self {
+    pub fn new(task_loss: Rc<TaskLoss>, task_info: Rc<RefCell<TaskInfo>>) -> Self {
         let mut free_value: HashMap<String, i32> = HashMap::new();
         free_value.insert("guided".to_string(), 100);
         free_value.insert("code".to_string(), 100);
@@ -75,34 +77,34 @@ impl TaskGrader {
     }
 
     pub fn get_rate_percent(&self) -> f64 {
-        let rate = self.info.rate as f64;
+        let rate = self.info.borrow().rate as f64;
         rate
     }
 
     pub fn get_quality_percent(&self) -> f64 {
-        if !self.info.feedback {
+        if !self.info.borrow().feedback {
             return 0.0;
         }
         let mut rate = 100.0;
-        if self.info.guided {
+        if self.info.borrow().guided {
             let value = self.grades
                 .get(&self.loss).unwrap()
                 .get("guided").unwrap();
             rate *= *value as f64 / 100.0;
         }
-        if self.info.ia_code {
+        if self.info.borrow().ia_code {
             let value = self.grades
                 .get(&self.loss).unwrap()
                 .get("code").unwrap();
             rate *= *value as f64 / 100.0;
         }
-        if self.info.ia_debug {
+        if self.info.borrow().ia_debug {
             let value = self.grades
                 .get(&self.loss).unwrap()
                 .get("debug").unwrap();
             rate *= *value as f64 / 100.0;
         }
-        if self.info.ia_problem {
+        if self.info.borrow().ia_problem {
             let value = self.grades
                 .get(&self.loss).unwrap()
                 .get("problem").unwrap();
@@ -123,7 +125,7 @@ pub struct Task {
 
     line_number: i32,
     line: String,
-    info: Rc<TaskInfo>,
+    info: Rc<RefCell<TaskInfo>>,
     main_idx: i32,
 
     task_test: TaskTest,
@@ -154,7 +156,7 @@ impl Task {
 
         let line_number: i32 = 0;
         let line: String = String::from("");
-        let info: Rc<TaskInfo> = Rc::new(TaskInfo::new());
+        let info: Rc<RefCell<TaskInfo>> = Rc::new(RefCell::new(TaskInfo::new()));
         let main_idx: i32 = 0;
 
         let task_test: TaskTest = TaskTest::TEST;
@@ -162,7 +164,7 @@ impl Task {
         let task_loss: Rc<TaskLoss> = Rc::new(TaskLoss::PART);
         let task_mode: TaskEdit = TaskEdit::EDIT;
 
-        let grader: TaskGrader = TaskGrader::new(task_loss.clone(), info.clone());
+        let grader: TaskGrader = TaskGrader::new(task_loss.clone(), Rc::clone(&info));
         let skills: HashMap<String, i32> = HashMap::new();
 
         let xp: i32 = 1;
@@ -188,7 +190,7 @@ impl Task {
         new_task.task_path = self.task_path;
         new_task.task_loss = Rc::new(self.task_loss.as_ref().clone());
         new_task.task_mode = self.task_mode.clone();
-        new_task.grader = TaskGrader::new(new_task.task_loss.clone(), new_task.info.clone());
+        new_task.grader = TaskGrader::new(new_task.task_loss.clone(), Rc::clone(&new_task.info));
         new_task.skills = self.skills.clone();
         new_task.xp = self.xp;
         new_task.target = self.target.clone();
@@ -297,16 +299,148 @@ impl Task {
         Ok(self)
     }
 
-    pub fn decode_from_dict(&self, value: &str) {
+    pub fn decode_from_dict(&mut self, value: &str) {
         // saturating sub extrai 1 com segurança, sem deixar ficar negativo
         let value_list = &value[1..value.len().saturating_sub(1)];
-        let kv_dict: HashMap<String, String> = HashMap::new();
+        let mut kv_dict: HashMap<String, String> = HashMap::new();
 
         for kv in value_list.split(",") {
             let Some((k, val)) = kv.split_once(":") else {
-                continue;;
-            }
-
+                continue;
+            };
+            kv_dict.insert(k.trim().to_string(), val.trim().to_string());
         }
+        self.info.borrow_mut().load_from_kv(&kv_dict);
+
+        if kv_dict.contains_key(str_index) {
+            match kv_dict.get(str_index) {
+                Some(key) => {
+                    match key.parse::<i32>() {
+                        Ok(integer) => self.main_idx = integer,
+                        Err(e) => panic!("Error: {}", e)
+                    }
+                },
+                None => ()
+            }
+        }
+    }
+
+    pub fn is_db_empty(&self) -> bool {
+        self.info.borrow().get_kv().len() == 0
+    }
+
+    pub fn get_rate_color(&self, value: i32, mut min_value: Option<i32>) -> String {
+        let prog = value;
+        if prog == 0 {
+            return String::from("c");
+        }
+        else if prog < min_value.unwrap_or(self.default_min_value) {
+            return String::from("r");
+        }
+        else if prog < 10 {
+            return String::from("y");
+        }
+        else if prog == 10 {
+            return String::from("g");
+        }
+        "w".to_string()
+    }
+
+    pub fn get_rate_symbol(&self, value: i32, mut min_value: Option<i32>) -> Text {
+        let min_value = min_value.unwrap_or(self.default_min_value);
+        let color = self.get_rate_color(value, Some(min_value));
+        let prog = value;
+        let mut text = Text::new(None, None);
+        if prog == 0 {
+            text.add(Some(AddValue::Str("x".to_string())));
+            return text;
+        }
+        else if prog < min_value {
+            text.addf(color, Some(AddValue::Str(prog.to_string())));
+            return text;
+        }
+        else if prog < 10 {
+            text.addf(color, Some(AddValue::Str(prog.to_string())));
+            return text;
+        }
+        else if prog == 10 {
+            text.addf(color, Some(AddValue::Str(symbols::CHECK.to_string())));
+            return text;
+        }
+        text.add(Some(AddValue::Str("0".to_string())));
+        text
+    }
+
+    pub fn get_xp(&self) -> i32 {
+        if self.xp == 0 {
+            return 1;
+        }
+        self.xp
+    }
+
+    pub fn get_rate_percent(&self) -> f64 {
+        let value = self.grader.get_rate_percent();
+        if value < 0.1 {
+            return 0.0;
+        }
+        value
+    }
+
+    pub fn get_quality_percent(&self) -> f64 {
+        if *self.task_loss == TaskLoss::FREE {
+            return 100.0;
+        }
+        let value = self.grader.get_quality_percent();
+        if value < 0.1 {
+            return 0.0;
+        }
+        value
+    }
+
+    pub fn get_ratio(&self) -> f64 {
+        self.grader.get_ratio()
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.grader.get_rate_percent() >= 70.0
+    }
+
+    pub fn not_started(&self) -> bool {
+        self.grader.get_rate_percent() == 0.0
+    }
+
+    pub fn in_progress(&self) -> bool {
+        self.grader.get_rate_percent() < 100.0
+    }
+
+    pub fn has_at_symbol(&self) -> bool {
+        self.task.get_title()
+        .split_whitespace()
+        .any(|s| s.starts_with('@'))
+    }
+}
+
+impl fmt::Display for Task {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let lnum = format!("{:>3}", self.line_number);
+
+        let full_key = self.task.get_key();
+        let title = self.task.get_title();
+
+        let key = if full_key == title {
+            String::new()
+        } else {
+            format!("{} ", full_key)
+        };
+
+        write!(
+            f,
+            "{} key:{} title:{} skills:{:?} remote:{}",
+            lnum,
+            key,
+            title,
+            self.skills,
+            self.target
+        )
     }
 }

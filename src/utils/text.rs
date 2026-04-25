@@ -1,7 +1,18 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-
+use std::{ops::Add, sync::atomic::{AtomicBool, Ordering}};
+use serde::de::value;
+use unicode_normalization::UnicodeNormalization;
 
 static ENABLED: AtomicBool = AtomicBool::new(true);
+
+#[derive(PartialEq)]
+pub enum AddValue {
+    Str(String),
+    Token(Token),
+    Text(Text),
+    Tuple((String, String))
+}
+
+
 pub struct AnsiColor;
 
 impl AnsiColor {
@@ -82,6 +93,7 @@ impl PartialEq for Token {
     }    
 }
 
+#[derive(PartialEq)]
 pub struct Text {
     value: String,
     data: Vec<Token>,
@@ -95,5 +107,72 @@ impl Text {
             value: value.unwrap_or("".to_string()), 
             fmt: fmt.unwrap_or("".to_string()) 
         }
+    }
+
+    pub fn get_str(&self) -> String {
+        self.data.iter().map(|t| t.text.as_str()).collect()
+    }
+
+    pub fn add(&mut self, mut value: Option<AddValue>) -> &mut Self {
+        let Some(value) = value else {
+            return self;
+        };
+
+        match value {
+            AddValue::Str(valor) => {
+                let norm_value: String = valor.nfc().collect();
+                if !norm_value.is_empty() {
+                    for c in norm_value.chars() {
+                        self.data.push(Token { text: c.to_string(), fmt: "".to_string() });
+                    }
+                }
+            },
+            AddValue::Token(mut token) => {
+                token.text = token.text.nfc().collect();
+                if token.text != "" {
+                    let fmt = token.fmt;
+                    for c in token.text.chars() {
+                        self.data.push(Token { text: c.to_string(), fmt: fmt.clone() });
+                    }
+                }
+            },
+            AddValue::Tuple(tupl) => {
+                let (fmt, text) = tupl;
+                let text: String = text.nfc().collect();
+                if text != "" {
+                    for c in text.chars() {
+                        self.data.push(Token::new(c.to_string(), fmt.clone()));
+                    }
+                }
+            },
+            AddValue::Text(val) => {
+                self.data.extend(val.data);
+            }
+        }
+
+        self
+    }
+
+    pub fn addf(&mut self, fmt: String, value: Option<AddValue>) -> &mut Self {
+        let Some(value) = value else {
+            return self;
+        };
+
+        match value {
+            AddValue::Str(val) => {
+                self.add(Some(AddValue::Token(Token::new(val, fmt))));
+            },
+            AddValue::Token(token) => {
+                self.add(Some(AddValue::Token(Token::new(token.text, fmt))));
+            },
+            AddValue::Text(text) => {
+                self.add(Some(AddValue::Token(Token::new(text.get_str(), fmt))));
+            },
+            AddValue::Tuple(tupl) => {
+                self.add(Some(AddValue::Token(Token::new(tupl.1, fmt))));
+            }
+        }
+
+        self
     }
 }

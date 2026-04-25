@@ -61,7 +61,7 @@ impl TaskInfo {
     }
 
     pub fn clone(&mut self) -> &mut TaskInfo {
-        TaskInfo::load_from_kv(self, self.get_kv())
+        TaskInfo::load_from_kv(self, &self.get_kv())
     }
 
     pub fn set_study(&mut self, value: &String) -> &mut Self {
@@ -92,7 +92,7 @@ impl TaskInfo {
         self
     }
 
-    pub fn load_from_kv(&mut self, kv: HashMap<&'static str, String>) -> &mut Self {
+    pub fn load_from_kv(&mut self, kv: &HashMap<String, String>) -> &mut Self {
         if kv.contains_key(Keys::rate_str) {
             self.set_rate(kv.get(Keys::rate_str).unwrap());
         }
@@ -128,38 +128,38 @@ impl TaskInfo {
         self
     }
 
-    pub fn get_kv(&self) -> HashMap<&'static str, String> {
-        let mut kv: HashMap<&'static str, String> = HashMap::new();
+    pub fn get_kv(&self) -> HashMap<String, String> {
+        let mut kv: HashMap<String, String> = HashMap::new();
         
         if self.feedback {
-            kv.insert(Keys::feedback_str, "1".to_string());
+            kv.insert(Keys::feedback_str.to_string(), "1".to_string());
         }
         if self.rate != 0 {
-            kv.insert(Keys::rate_str, self.rate.to_string());
+            kv.insert(Keys::rate_str.to_string(), self.rate.to_string());
         }
         if self.study != 0 {
-            kv.insert(Keys::study_str, self.study.to_string());
+            kv.insert(Keys::study_str.to_string(), self.study.to_string());
         }
         if self.friend != "".to_string() {
-            kv.insert(Keys::friend_str, self.friend.clone());
+            kv.insert(Keys::friend_str.to_string(), self.friend.clone());
         }
         if self.guided {
-            kv.insert(Keys::guided_str, "1".to_string());
+            kv.insert(Keys::guided_str.to_string(), "1".to_string());
         }
         if self.ia_concept {
-            kv.insert(Keys::ia_concept_str, "1".to_string());
+            kv.insert(Keys::ia_concept_str.to_string(), "1".to_string());
         }
         if self.ia_problem {
-            kv.insert(Keys::ia_problem_str, "1".to_string());
+            kv.insert(Keys::ia_problem_str.to_string(), "1".to_string());
         }
         if self.ia_code {
-            kv.insert(Keys::ia_coding_str, "1".to_string());
+            kv.insert(Keys::ia_coding_str.to_string(), "1".to_string());
         }
         if self.ia_debug {
-            kv.insert(Keys::ia_debug_str, "1".to_string());
+            kv.insert(Keys::ia_debug_str.to_string(), "1".to_string());
         }
         if self.ia_refactor {
-            kv.insert(Keys::ia_refactor_str, "1".to_string());
+            kv.insert(Keys::ia_refactor_str.to_string(), "1".to_string());
         }
 
         kv
