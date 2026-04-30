@@ -16,23 +16,26 @@ use crate::utils::text::{AddValue, Text};
 // }
 
 pub struct Quest {
-    tree: TreeItem,
-    line_number: i32,
-    line: String,
+    pub tree: TreeItem,
+    pub line_number: i32,
+    pub line: String,
     __tasks: Vec<Task>,
     requires: Vec<String>,
     requires_ptr: Vec<Quest>,
     required_by_ptr: Vec<Quest>,
-    skills: HashMap<String, i32>,
-    languages: Vec<String>,
-    min_percent_completion: i32,
+    pub skills: HashMap<String, i32>,
+    pub languages: Vec<String>,
+    pub min_percent_completion: i32,
     filename: String,
-    remote_name: String,
+    pub remote_name: String,
     __is_reachable: bool
 }
 
 impl Quest {
-    pub fn new(title: String, key: String) -> Self {
+    pub fn new(title: Option<String>, key: Option<String>) -> Self {
+        let title = title.unwrap_or_default();
+        let key = key.unwrap_or_default();
+
         let mut tree: TreeItem = TreeItem::new();
         tree.set_key(key);
         tree.set_title(title);

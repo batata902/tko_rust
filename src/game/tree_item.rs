@@ -40,8 +40,8 @@ impl TreeItem {
     }
 
 
-    pub fn set_remote_name(&mut self, remote_name: String) -> &mut Self {
-        self.__remote_name = remote_name;
+    pub fn set_remote_name(&mut self, remote_name: &String) -> &mut Self {
+        self.__remote_name = remote_name.clone();
         
         self
     }
