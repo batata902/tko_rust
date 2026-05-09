@@ -18,28 +18,29 @@ pub struct AnsiColor;
 impl AnsiColor {
     pub fn get(key: char) -> &'static str {
         match key {
-            '.' => "\033[0m",
-            '*' => "\033[1m",
-            '/' => "\033[3m",
-            '_' => "\033[4m",
+            '.' => "\x1b[0m",
+            '*' => "\x1b[1m",
+            '/' => "\x1b[3m",
+            '_' => "\x1b[4m",
 
-            'k' => "\033[30m",
-            'r' => "\033[31m",
-            'g' => "\033[32m",
-            'y' => "\033[33m",
-            'b' => "\033[34m",
-            'm' => "\033[35m",
-            'c' => "\033[36m",
-            'w' => "\033[37m",
+            'k' => "\x1b[30m",
+            'r' => "\x1b[31m",
+            'g' => "\x1b[32m",
+            'y' => "\x1b[33m",
+            'b' => "\x1b[34m",
+            'm' => "\x1b[35m",
+            'c' => "\x1b[36m",
+            'w' => "\x1b[37m",
 
-            'K' => "\033[40m",
-            'W' => "\033[47m",
-            'R' => "\033[41m",
-            'G' => "\033[42m",
-            'Y' => "\033[43m",
-            'B' => "\033[44m",
-            'M' => "\033[45m",
-            'C' => "\033[46m",
+            'K' => "\x1b[40m",
+            'W' => "\x1b[47m",
+            'R' => "\x1b[41m",
+            'G' => "\x1b[42m",
+            'Y' => "\x1b[43m",
+            'B' => "\x1b[44m",
+            'M' => "\x1b[45m",
+            'C' => "\x1b[46m",
+
             _ => ""
         }
     }
@@ -65,8 +66,8 @@ impl AnsiColor {
 
 #[derive(Clone)]
 pub struct Token {
-    text: String,
-    fmt: String
+    pub text: String,
+    pub fmt: String
 }
 
 
@@ -96,9 +97,9 @@ impl PartialEq for Token {
 
 #[derive(PartialEq, Clone)]
 pub struct Text {
-    value: String,
-    data: Vec<Token>,
-    fmt: String
+    pub value: String,
+    pub data: Vec<Token>,
+    pub fmt: String
 }
 
 impl Text {

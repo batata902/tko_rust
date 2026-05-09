@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::game::quest::Quest;
 use crate::utils::get_md_link::get_md_link;
@@ -9,7 +9,7 @@ pub struct QuestParser {
     source_alias: String,
     quest: Quest,
     line: String,
-    line_num: i32,
+    line_num: usize,
     filename: PathBuf
 }
 
@@ -27,12 +27,16 @@ impl QuestParser {
         }
     }
 
-    pub fn finish_quest(&mut self) -> &Quest {
-        if self.quest.tree.get_key().is_empty() {
-            self.quest.tree.set_key(get_md_link(self.quest.tree.get_title().to_string()));
+    pub fn finish_quest(&self) -> Quest {
+        let mut quest = self.quest.clone();
+
+        if quest.tree.get_key().is_empty() {
+            quest.tree.set_key(
+                get_md_link(quest.tree.get_title().to_string())
+            );
         }
 
-        &self.quest
+        quest
     }
 
     pub fn match_full_pattern(&mut self) -> bool {
@@ -148,10 +152,10 @@ impl QuestParser {
         words.join(" ")
     }
 
-    pub fn parse_quest(&mut self, filename: PathBuf, line: String, line_num: i32) -> Option<&Quest> {
+    pub fn parse_quest(&mut self, filename: &Path, line: String, line_num: usize) -> Option<Quest> {
         self.line = line;
         self.line_num = line_num;
-        self.filename = filename;
+        self.filename = filename.to_path_buf();
 
         self.quest.line = self.line.clone();
         self.quest.line_number = self.line_num;

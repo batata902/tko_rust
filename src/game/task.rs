@@ -39,6 +39,47 @@ pub enum TaskEdit {
     EDIT
 }
 
+
+impl TaskTest {
+    pub fn value(&self) -> &'static str {
+        match self {
+            TaskTest::NULL => "null",
+            TaskTest::TEST => "test",
+            TaskTest::SELF => "self"
+        }
+    }
+}
+
+impl TaskMain {
+    pub fn value(&self) -> &'static str {
+        match self {
+            TaskMain::MAIN => "main",
+            TaskMain::PERK => "perk",
+            TaskMain::SIDE => "side"
+        }
+    }
+}
+
+impl TaskLoss {
+    pub fn value(&self) -> &'static str {
+        match self {
+            TaskLoss::NULL => "null",
+            TaskLoss::FREE => "free",
+            TaskLoss::PART => "part",
+            TaskLoss::ZERO => "zero"
+        }
+    }
+}
+
+impl TaskEdit {
+    pub fn value(&self) -> &'static str {
+        match self {
+            TaskEdit::EDIT => "edit",
+            TaskEdit::VIEW => "view"
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct TaskGrader{
     info: Rc<RefCell<TaskInfo>>,
@@ -125,7 +166,7 @@ impl TaskGrader {
 pub struct Task {
     pub task: TreeItem,
 
-    pub line_number: i32,
+    pub line_number: usize,
     pub line: String,
     pub info: Rc<RefCell<TaskInfo>>,
     pub main_idx: i32,
@@ -156,7 +197,7 @@ impl Task {
     pub fn new() -> Self {
         let task: TreeItem = TreeItem::new();
 
-        let line_number: i32 = 0;
+        let line_number: usize = 0;
         let line: String = String::from("");
         let info: Rc<RefCell<TaskInfo>> = Rc::new(RefCell::new(TaskInfo::new()));
         let main_idx: i32 = 0;

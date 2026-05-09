@@ -15,9 +15,10 @@ use crate::utils::text::{AddValue, Text};
 //     text.starts_with(&prefix)
 // }
 
+#[derive(Clone)]
 pub struct Quest {
     pub tree: TreeItem,
-    pub line_number: i32,
+    pub line_number: usize,
     pub line: String,
     __tasks: Vec<Task>,
     requires: Vec<String>,
@@ -106,9 +107,13 @@ impl Quest {
         self.__tasks.push(task);
     }
 
-    pub fn get_tasks(&self) -> Vec<Task> {
-        self.__tasks.clone()
+    pub fn get_tasks(&self) -> &[Task] {
+        &self.__tasks
     }
+
+    pub fn get_tasks_mut(&mut self) -> &mut Vec<Task> {
+    &mut self.__tasks
+}
 
     pub fn sort_tasks_by_title(&mut self) {
         self.__tasks.sort_by_key(|t| t.task.get_title().to_string());
