@@ -1,15 +1,29 @@
-use crate::utils::text::Text;
+use crate::utils::rtext::RText;
+
+#[derive(Clone)]
+pub struct TreeUi {
+    pub ligature: RText,
+    pub visible: bool,
+    pub is_requirement_color: String
+}
+
+
+impl TreeUi {
+    pub fn new() -> Self {
+        Self { 
+            ligature: RText::new(), 
+            visible: false, 
+            is_requirement_color: String::new() 
+        }
+    }
+}
+
 
 #[derive(Clone)]
 pub struct TreeItem {
     __remote_name: String,
     __key: String,
-    __sentence: Text,
     _title: String,
-
-    ligature: Text,
-    visible: bool,
-    is_requirement_color: String
 }
 
 impl TreeItem {
@@ -17,9 +31,7 @@ impl TreeItem {
         Self { 
             __remote_name: "".to_string(), 
             __key: "".to_string(), 
-            __sentence: Text::new(None, None),
-            _title: "".to_string(), 
-            ligature: Text::new(Some(" ".to_string()), None), visible: false, is_requirement_color: "".to_string() 
+            _title: "".to_string()
         }
     }
 
@@ -60,9 +72,19 @@ impl TreeItem {
         self
     }
 
-    pub fn set_sentence(&mut self, sentence: Text) -> &mut Self {
-        self.__sentence = sentence;
+    // pub fn set_sentence(&mut self, sentence: Text) -> &mut Self {
+    //     self.__sentence = sentence;
 
+    //     self
+    // }
+}
+
+pub trait HasTreeIdentity {
+    fn identity(&self) -> &TreeItem;
+}
+
+impl HasTreeIdentity for TreeItem {
+    fn identity(&self) -> &TreeItem {
         self
     }
 }

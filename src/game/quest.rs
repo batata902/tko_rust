@@ -4,7 +4,8 @@ use std::fmt;
 
 use crate::game::quest_grader::Elem;
 use crate::game::task::TaskMain;
-use crate::game::{tree_item::TreeItem, quest_grader::QuestGrader, task::Task};
+use crate::game::tree_item::HasTreeIdentity;
+use crate::game::{tree_item::TreeItem, tree_item::TreeUi, quest_grader::QuestGrader, task::Task};
 use crate::utils::text::{AddValue, Text};
 
 // fn startswith(text: String, prefix: String) -> bool {
@@ -17,7 +18,8 @@ use crate::utils::text::{AddValue, Text};
 
 #[derive(Clone)]
 pub struct Quest {
-    pub tree: TreeItem,
+    pub identity: TreeItem,
+    pub ui: TreeUi,
     pub line_number: usize,
     pub line: String,
     __tasks: Vec<Task>,
@@ -37,12 +39,13 @@ impl Quest {
         let title = title.unwrap_or_default();
         let key = key.unwrap_or_default();
 
-        let mut tree: TreeItem = TreeItem::new();
-        tree.set_key(key);
-        tree.set_title(title);
+        let mut identity: TreeItem = TreeItem::new();
+        identity.set_key(key);
+        identity.set_title(title);
 
         Self { 
-            tree, 
+            identity, 
+            ui: TreeUi::new(),
             line_number: 0, 
             line: "".to_string(), 
             __tasks: Vec::new(), 
@@ -62,12 +65,12 @@ impl Quest {
         if key.starts_with('@') {
             key = key.chars().skip(0).collect();
         }
-        self.requires.push(format!("{}@{}", self.tree.get_remote_name(), key));
+        self.requires.push(format!("{}@{}", self.identity.get_remote_name(), key));
     }
 
     pub fn get_full_title(&self, show_skills: bool) -> Text {
         let mut output = Text::new(None, None);
-        output.addf("c".to_string(), Some(AddValue::Str(Cow::Borrowed(&self.remote_name)))).add(Some(AddValue::Str(Cow::Owned(":".to_string())))).add(Some(AddValue::Str(Cow::Borrowed(&self.tree.get_title().to_string()))));
+        output.addf("c".to_string(), Some(AddValue::Str(Cow::Borrowed(&self.remote_name)))).add(Some(AddValue::Str(Cow::Owned(":".to_string())))).add(Some(AddValue::Str(Cow::Borrowed(&self.identity.get_title().to_string()))));
         if show_skills {
             for (skill, value) in &self.skills {
                 if *value > 1 {
@@ -149,7 +152,7 @@ impl Quest {
 
     pub fn get_percent_main_and_all(&self) -> (Option<f64>, f64) {
         let mut percent_main: Option<f64> = Some(0.0);
-        let mut percent_all: f64 = 0.0;
+        let percent_all: f64;
 
         let (obtainedm, totalm) = self.get_xp(true, false);
         let (obtaineds, totals) = self.get_xp(false, true);
@@ -193,11 +196,17 @@ impl Quest {
 
 impl fmt::Display for Quest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let key = if self.tree.get_full_key() == self.tree.get_title() {
+        let key = if self.identity.get_full_key() == self.identity.get_title() {
             String::new()
         } else {
-            format!("{} ", self.tree.get_full_key())
+            format!("{} ", self.identity.get_full_key())
         };
-        write!(f, "{:>3} {:0>2} {}{} {:?} {:?}", self.line_number.to_string(), self.__tasks.len(), key, self.tree.get_title(), self.skills, self.requires)
+        write!(f, "{:>3} {:0>2} {}{} {:?} {:?}", self.line_number.to_string(), self.__tasks.len(), key, self.identity.get_title(), self.skills, self.requires)
+    }
+}
+
+impl HasTreeIdentity for Quest {
+    fn identity(&self) -> &TreeItem {
+        &self.identity
     }
 }

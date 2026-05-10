@@ -99,20 +99,20 @@ impl GameBuilder {
 
     pub fn __parse_file_content(&mut self, content: &String) {
         let lines: Vec<&str> = content.lines().collect();
-        let alias = &self.source.name;
+        let alias = self.source.name.clone();
 
         match self.source.get_source_readme() {
             Ok(filename) => {
                 for (line_num, line) in lines.iter().enumerate() {
                     // obs.: Alterar QuestParser para receber referência ao invés de clone() (Otimização)
-                    let mut quest_parser = QuestParser::new(alias.clone()); 
+                    let mut quest_parser = QuestParser::new(&alias); 
                     let quest = quest_parser.parse_quest(&filename, line.to_string(), line_num);
                     if !quest.is_none() {
                         self.__add_quest(quest_parser.finish_quest());
                         continue;
                     }
 
-                    let mut tp = TaskParser::new(&filename, alias);
+                    let mut tp = TaskParser::new(&filename, &alias);
                     
                     if let Ok(task) = tp
                         .parse_line(line, line_num + 1)
@@ -139,8 +139,8 @@ impl GameBuilder {
         }
     }
 
-    pub fn __add_quest(&mut self, quest: Quest) -> &Quest {
-        let key = quest.tree.get_full_key().to_string();
+    pub fn __add_quest(&mut self, quest: Quest) -> &mut Quest {
+        let key = quest.identity.get_full_key().to_string();
 
         if !self.quests.contains_key(&key) {
             self.quests.insert(key.clone(), quest);
@@ -152,10 +152,68 @@ impl GameBuilder {
 
         self.active_quest = self.quests.get(&key).cloned();
 
-        self.quests.get(&key).unwrap()
+        self.quests.get_mut(&key).unwrap()
     }
 
-    pub fn __add_task(&self, task: Task) {
-        self.__get_active_quest().add_task(task);
+    pub fn __get_active_quest(&mut self) -> Option<&mut Quest> {
+        if self.active_quest.is_none() {
+            let qkey = String::from("_sem_quest");
+            return Some(self.__add_quest(Quest::new(Some("Sem Quest".to_string()), Some(qkey))));
+        }
+        self.active_quest.as_mut()
+    }
+
+    pub fn __add_task(&mut self, task: Task) {
+        self.__get_active_quest()
+            .expect("no active quests")
+            .add_task(task);
+    }
+
+    pub fn add_filtered_quests(&mut self, quest_filters: Option<HashMap<String, String>>) {
+        if self.source.is_sandbox_source() {
+            return;
+        }
+
+        let Some(quest_filters) = quest_filters else {
+            return;
+        };
+
+        if quest_filters.is_empty() {
+            return;
+        }
+
+        let mut result: HashMap<String, Quest> = HashMap::new();
+
+        for (pattern, destiny) in quest_filters {
+            let pattern_l = pattern.to_lowercase();
+
+            for q in self.quests.values() {
+                let title = q.identity.get_title().to_lowercase();
+                let key_match = format!("@{}", q.identity.get_key().to_lowercase());
+
+                if title.contains(&pattern_l) || pattern_l == key_match {
+                    if destiny.is_empty() {
+                        result.insert(q.identity.get_full_key(), q.clone());
+                    } else {
+                        let key = format!("{}@{}", self.source.name, destiny);
+
+                        let entry = result.entry(key.clone()).or_insert_with(|| {
+                            let mut ques = Quest::new(
+                                Some(destiny.clone()),
+                                Some(destiny.clone()),
+                            );
+                            ques.identity.set_remote_name(&self.source.name);
+                            ques
+                        });
+
+                        for t in q.get_tasks() {
+                            entry.add_task(t.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        self.quests = result;
     }
 }

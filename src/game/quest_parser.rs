@@ -5,18 +5,18 @@ use crate::game::quest::Quest;
 use crate::utils::get_md_link::get_md_link;
 
 
-pub struct QuestParser {
-    source_alias: String,
+pub struct QuestParser <'a> {
+    source_alias: &'a str,
     quest: Quest,
     line: String,
     line_num: usize,
     filename: PathBuf
 }
 
-impl QuestParser {
-    pub fn new(source_alias: String) -> Self {
+impl <'a> QuestParser <'a> {
+    pub fn new(source_alias: &'a str) -> Self {
         let mut quest = Quest::new(None, None);
-        quest.tree.set_remote_name(&source_alias);
+        quest.identity.set_remote_name(&source_alias);
 
         Self { 
             source_alias, 
@@ -27,12 +27,12 @@ impl QuestParser {
         }
     }
 
-    pub fn finish_quest(&self) -> Quest {
+    pub fn finish_quest(&mut self) -> Quest {
         let mut quest = self.quest.clone();
 
-        if quest.tree.get_key().is_empty() {
-            quest.tree.set_key(
-                get_md_link(quest.tree.get_title().to_string())
+        if quest.identity.get_key().is_empty() {
+            quest.identity.set_key(
+                get_md_link(quest.identity.get_title().to_string())
             );
         }
 
@@ -54,7 +54,7 @@ impl QuestParser {
                 .replace("`", " ");
         let title = self.process_words(&_line);
 
-        self.quest.tree.set_title(title);
+        self.quest.identity.set_title(title);
 
         true
     }
@@ -75,7 +75,7 @@ impl QuestParser {
         }
 
         if !keys.is_empty() {
-            self.quest.tree.set_key(keys.get(0).unwrap().to_string());
+            self.quest.identity.set_key(keys.get(0).unwrap().to_string());
         }
 
         let mut skills: Vec<&str> = Vec::new();
@@ -99,7 +99,7 @@ impl QuestParser {
         }
         if self.quest.skills.len() == 0 {
             self.quest.skills = HashMap::from([
-                (self.quest.tree.get_key().to_string(), 1)
+                (self.quest.identity.get_key().to_string(), 1)
             ]);
             
         }

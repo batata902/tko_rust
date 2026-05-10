@@ -191,7 +191,7 @@ pub struct Task {
     pub default_min_value: i32
 }
 
-static str_index: &str = "idx";
+static STR_INDEX: &str = "idx";
 
 impl Task {
     pub fn new() -> Self {
@@ -257,7 +257,7 @@ impl Task {
         result
     }
 
-    pub fn get_full_title(&self, mut key_pad: Option<usize>, mut pad_char: char) -> String {
+    pub fn get_full_title(&self, mut key_pad: Option<usize>, pad_char: char) -> String {
         let key: &str = self.task.get_key();
         if key_pad.is_none() {
             key_pad = Some(key.chars().count());
@@ -355,8 +355,8 @@ impl Task {
         }
         self.info.borrow_mut().load_from_kv(&kv_dict);
 
-        if kv_dict.contains_key(str_index) {
-            match kv_dict.get(str_index) {
+        if kv_dict.contains_key(STR_INDEX) {
+            match kv_dict.get(STR_INDEX) {
                 Some(key) => {
                     match key.parse::<i32>() {
                         Ok(integer) => self.main_idx = integer,
@@ -389,7 +389,7 @@ impl Task {
         "w".to_string()
     }
 
-    pub fn get_rate_symbol(&self, value: i32, mut min_value: Option<i32>) -> Text {
+    pub fn get_rate_symbol(&self, value: i32, min_value: Option<i32>) -> Text {
         let min_value = min_value.unwrap_or(self.default_min_value);
         let color = self.get_rate_color(value, Some(min_value));
         let prog = value;
