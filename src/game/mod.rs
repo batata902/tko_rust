@@ -6,3 +6,5 @@ pub mod quest;
 pub mod quest_parser;
 pub mod task_parser;
 pub mod game_builder;
+pub mod task_location;
+pub mod task_config;

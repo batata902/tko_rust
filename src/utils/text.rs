@@ -1,4 +1,4 @@
-use std::{ops::Add, sync::atomic::{AtomicBool, Ordering}};
+use std::{sync::atomic::{AtomicBool, Ordering}};
 use std::borrow::Cow;
 use unicode_normalization::UnicodeNormalization;
 
@@ -115,7 +115,7 @@ impl Text {
         self.data.iter().map(|t| t.text.as_str()).collect()
     }
 
-    pub fn add(&mut self, mut value: Option<AddValue>) -> &mut Self {
+    pub fn add(&mut self, value: Option<AddValue>) -> &mut Self {
         let Some(value) = value else {
             return self;
         };

@@ -2,13 +2,13 @@ use std::{collections::HashMap, path::PathBuf};
 
 
 pub struct Settings {
-    CFG_FILE: String,
-    LANG_FILE: String,
+    cfg_file: String,
+    lang_file: String,
     alias_git: HashMap<String, String>
 }
 
 impl Settings {
-    pub fn new(path_dir: Option<PathBuf>) -> Self {
+    pub fn new(_path_dir: Option<PathBuf>) -> Self {
         let mut alias_git: HashMap<String, String> = HashMap::new();
         alias_git.insert("poo".to_string(), "https://github.com/qxcodepoo/arcade.git".to_string());
         alias_git.insert("fup".to_string(), "https://github.com/qxcodefup/arcade.git".to_string());
@@ -16,8 +16,8 @@ impl Settings {
 
 
         Self { 
-            CFG_FILE: "settings.yaml".to_string(), 
-            LANG_FILE: "languages.toml".to_string(),
+            cfg_file: "settings.yaml".to_string(), 
+            lang_file: "languages.toml".to_string(),
             alias_git,  
         }
     }

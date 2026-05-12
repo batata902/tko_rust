@@ -20,7 +20,7 @@ pub struct GitCache {
 pub enum UpdateMode {
     ALWAYS,
     NEVER,
-    IF_OLDER,
+    IfOlder,
 }
 
 impl GitCache {
@@ -34,7 +34,7 @@ impl GitCache {
 
         Ok(Self {
             cache_dir,
-            update_mode: update_mode.unwrap_or(UpdateMode::IF_OLDER),
+            update_mode: update_mode.unwrap_or(UpdateMode::IfOlder),
             updated: HashMap::new(),
             max_age: max_age.unwrap_or(Duration::from_secs(3600)),
         })

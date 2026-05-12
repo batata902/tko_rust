@@ -11,7 +11,7 @@ use crate::game::{
 };
 
 use crate::settings::rep_source::RepSource;
-use crate::utils::decoder::Decoder;
+use crate::utils::decoder::decoder;
 use crate::feno::indexer::fix_readme;
 
 pub struct GameBuilder {
@@ -41,12 +41,12 @@ impl GameBuilder {
         self
     }
 
-    pub fn build_from(&mut self, language: &str) -> &mut Self {
+    pub fn build_from(&mut self, _language: &str) -> &mut Self {
         let filename = self.source.get_source_readme();
         match filename {
             Ok(file) => {
                 self.__ensure_sandbox_readme_fixed(&file);
-                let content: String = self.load_content(&file).unwrap();
+                let _content: String = self.load_content(&file).unwrap();
                 
             },
             Err(e) => {
@@ -69,7 +69,7 @@ impl GameBuilder {
                 }
             }
         } else {
-            content = Decoder::load(filename, true)?;
+            content = decoder::load(filename, true)?;
         }
 
         Ok(content)
@@ -119,8 +119,8 @@ impl GameBuilder {
                         .check_path_try() {
                             if let Some(task) = task.get_task() {
                                 if self.source.is_read_only() && !task.is_link() {
-                                    task.set_workspace_folder(
-                                        self.source.get_task_workspace(task.task.get_key()).unwrap()
+                                    task.location.set_workspace_folder(
+                                        self.source.get_task_workspace(task.identity.get_key()).unwrap()
                                     ).ok();
                                 }
 
@@ -169,7 +169,8 @@ impl GameBuilder {
             .add_task(task);
     }
 
-    pub fn add_filtered_quests(&mut self, quest_filters: Option<HashMap<String, String>>) {
+    pub fn add_filtered_quests(&mut self, quest_filters: Option<&HashMap<String, String>>) {
+        // Mesmo comportamento do Python
         if self.source.is_sandbox_source() {
             return;
         }
@@ -182,38 +183,125 @@ impl GameBuilder {
             return;
         }
 
+        // Snapshot das quests atuais.
+        // Isso preserva o comportamento do Python:
+        //
+        // available_quests = [q for q in self.quests.values()]
+        //
+        // Além disso evita problemas de borrow ao reconstruir self.quests.
+        let available_quests: Vec<Quest> =
+            self.quests.values().cloned().collect();
+
+        // Resultado final das quests filtradas
         let mut result: HashMap<String, Quest> = HashMap::new();
+
+        // Mantém a ordem de inserção equivalente ao __add_quest
+        let mut ordered_quests: Vec<String> = Vec::new();
+
+        // Última quest adicionada
+        let mut active_quest: Option<Quest> = None;
 
         for (pattern, destiny) in quest_filters {
             let pattern_l = pattern.to_lowercase();
 
-            for q in self.quests.values() {
-                let title = q.identity.get_title().to_lowercase();
-                let key_match = format!("@{}", q.identity.get_key().to_lowercase());
+            for q in &available_quests {
+                let title_l = q.identity.get_title().to_lowercase();
 
-                if title.contains(&pattern_l) || pattern_l == key_match {
-                    if destiny.is_empty() {
-                        result.insert(q.identity.get_full_key(), q.clone());
-                    } else {
-                        let key = format!("{}@{}", self.source.name, destiny);
+                let key_match =
+                    format!("@{}", q.identity.get_key().to_lowercase());
 
-                        let entry = result.entry(key.clone()).or_insert_with(|| {
-                            let mut ques = Quest::new(
-                                Some(destiny.clone()),
-                                Some(destiny.clone()),
-                            );
-                            ques.identity.set_remote_name(&self.source.name);
-                            ques
-                        });
+                let matches =
+                    title_l.contains(&pattern_l)
+                    || pattern_l == key_match;
 
-                        for t in q.get_tasks() {
-                            entry.add_task(t.clone());
-                        }
+                if !matches {
+                    continue;
+                }
+
+                // Caso:
+                //
+                // if destiny == "":
+                //
+                if destiny.is_empty() {
+                    let key = q.identity.get_full_key();
+
+                    if !result.contains_key(&key) {
+                        result.insert(key.clone(), q.clone());
+                        ordered_quests.push(key.clone());
                     }
+
+                    active_quest = Some(q.clone());
+                } else {
+                    // Quest destino agregadora
+                    let key =
+                        format!("{}@{}", self.source.name, destiny);
+
+                    // Cria somente uma vez
+                    if !result.contains_key(&key) {
+                        let mut qdestiny = Quest::new(
+                            Some(destiny.clone()),
+                            Some(destiny.clone()),
+                        );
+
+                        qdestiny
+                            .identity
+                            .set_remote_name(&self.source.name);
+
+                        result.insert(key.clone(), qdestiny);
+
+                        ordered_quests.push(key.clone());
+                    }
+
+                    let entry = result.get_mut(&key).unwrap();
+
+                    // Copia todas as tasks
+                    for t in q.get_tasks() {
+                        entry.add_task(t.clone());
+                    }
+
+                    active_quest = Some(entry.clone());
                 }
             }
         }
 
+        // Reconstrói o estado final
         self.quests = result;
+        self.ordered_quests = ordered_quests;
+        self.active_quest = active_quest;
+    }
+
+    pub fn filter_by_langugage_and_empty(&mut self, language: String) {
+        let mut quests: Vec<Quest> = Vec::new();
+        for q in self.quests.values().cloned() {
+            if q.get_tasks().len() == 0 {
+                continue;
+            }
+            if q.languages.len() == 0 || q.languages.contains(&language) {
+                quests.push(q);
+            }
+        }
+        self.quests = quests.into_iter().map(|q| (q.identity.get_full_key(), q)).collect();
+    }
+
+    pub fn __remove_empty_and_other_language_and_filtered(&mut self, language: &str, quest_filters: Option<HashMap<String, String>>) -> &mut Self {
+        if quest_filters.is_none() || quest_filters.as_ref().is_some_and(|qf| qf.len() == 0) {
+            self.filter_by_langugage_and_empty(language.to_string());
+        } else {
+            self.add_filtered_quests(quest_filters.as_ref());
+        }
+
+        self
+    }
+
+    pub fn __create_cross_references(&mut self) {
+        for (_, quest) in &mut self.quests {
+            quest.identity.set_remote_name(&self.source.name);
+
+            let key = quest.identity.get_full_key();
+            for task in quest.get_tasks_mut() {
+                task.identity.set_remote_name(&self.source.name);
+                task.quest_key = key.clone();
+            }
+        }
     }
 }

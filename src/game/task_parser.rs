@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use regex::Regex;
 
-use crate::game::task::{Task, TaskEdit, TaskLoss, TaskTest};
+use crate::game::task::{Task};
+use crate::game::task_config::{TaskEdit, TaskLoss, TaskTest};
 
 pub struct TaskParser {
     index_path: PathBuf,
@@ -12,7 +12,7 @@ pub struct TaskParser {
 impl TaskParser {
     pub fn new(index_path: &Path, source_alias: &str) -> Self {
         let mut task = Task::new();
-        task.task.set_remote_name(source_alias);
+        task.identity.set_remote_name(source_alias);
         Self {
             index_path: index_path.to_path_buf(),
             task: Some(task),
@@ -71,13 +71,13 @@ impl TaskParser {
     fn decode_task_types(&mut self, type_str: &str) {
         if let Some(task) = self.task.as_mut() {
             match type_str {
-                "free" => task.task_loss = Rc::new(TaskLoss::FREE),
-                "part" => task.task_loss = Rc::new(TaskLoss::PART),
-                "zero" => task.task_loss = Rc::new(TaskLoss::ZERO),
-                "test" => task.task_test = TaskTest::TEST,
-                "self" => task.task_test = TaskTest::SELF,
-                "view" => task.task_mode = TaskEdit::VIEW,
-                "edit" => task.task_mode = TaskEdit::EDIT,
+                "free" => task.config.loss = TaskLoss::FREE,
+                "part" => task.config.loss = TaskLoss::PART,
+                "zero" => task.config.loss = TaskLoss::ZERO,
+                "test" => task.config.test = TaskTest::TEST,
+                "self" => task.config.test = TaskTest::SELF,
+                "view" => task.config.mode = TaskEdit::VIEW,
+                "edit" => task.config.mode = TaskEdit::EDIT,
                 _ => {}
             }
         }
@@ -92,7 +92,7 @@ impl TaskParser {
 
         // Reset task_loss to NULL before re-parsing.
         if let Some(task) = self.task.as_mut() {
-            task.task_loss = Rc::new(TaskLoss::NULL);
+            task.config.loss = TaskLoss::NULL;
         }
 
         let words: Vec<String> = tags
@@ -107,7 +107,7 @@ impl TaskParser {
             if item.starts_with('@') {
                 let key = TaskParser::filter_task_key(item[1..].to_string());
                 if let Some(task) = self.task.as_mut() {
-                    task.task.set_key(key);
+                    task.identity.set_key(key);
                 }
             } else if item.starts_with(':') {
                 // decode_task_types borrows &mut self, so we clone the slice first.
@@ -120,27 +120,27 @@ impl TaskParser {
 
         // Determine task_mode from whether the key starts with "+".
         if let Some(task) = self.task.as_mut() {
-            if task.task.get_key().starts_with('+') {
-                task.task_mode = TaskEdit::VIEW;
+            if task.identity.get_key().starts_with('+') {
+                task.config.mode = TaskEdit::VIEW;
             } else {
-                task.task_mode = TaskEdit::EDIT;
+                task.config.mode = TaskEdit::EDIT;
             }
 
             // Apply default loss/test values that depend on the mode.
-            if task.task_mode == TaskEdit::VIEW {
-                if *task.task_loss == TaskLoss::NULL {
-                    task.task_loss = Rc::new(TaskLoss::FREE);
+            if task.config.mode == TaskEdit::VIEW {
+                if task.config.loss == TaskLoss::NULL {
+                    task.config.loss = TaskLoss::FREE;
                 }
-                if task.task_test == TaskTest::NULL {
-                    task.task_test = TaskTest::SELF;
+                if task.config.test == TaskTest::NULL {
+                    task.config.test = TaskTest::SELF;
                 }
             } else {
                 // EDIT
-                if *task.task_loss == TaskLoss::NULL {
-                    task.task_loss = Rc::new(TaskLoss::PART);
+                if task.config.loss == TaskLoss::NULL {
+                    task.config.loss = TaskLoss::PART;
                 }
-                if task.task_test == TaskTest::NULL {
-                    task.task_test = TaskTest::TEST;
+                if task.config.test == TaskTest::NULL {
+                    task.config.test = TaskTest::TEST;
                 }
             }
         }
@@ -172,8 +172,8 @@ impl TaskParser {
 
         // Store raw line info on the task.
         if let Some(task) = self.task.as_mut() {
-            task.line_number = line_num;
-            task.line = line.to_string();
+            task.location.line_number = line_num;
+            task.location.line = line.to_string();
         }
 
         // Parse combined tag + title string to extract key, flags and clean title.
@@ -181,14 +181,14 @@ impl TaskParser {
         let new_title = self.parse_key_task_types(&combined);
 
         if let Some(task) = self.task.as_mut() {
-            task.task.set_title(new_title);
+            task.identity.set_title(new_title);
         }
 
         // A task without a key is invalid — discard it.
         let key_empty = self
             .task
             .as_ref()
-            .map(|t| t.task.get_key().is_empty())
+            .map(|t| t.identity.get_key().is_empty())
             .unwrap_or(true);
 
         if key_empty {
@@ -199,8 +199,8 @@ impl TaskParser {
         // Remote (HTTP/HTTPS) links need no local path resolution.
         if link.starts_with("http://") || link.starts_with("https://") {
             if let Some(task) = self.task.as_mut() {
-                task.set_remote_view_type();
-                task.target = link;
+                task.location.set_remote_view_type();
+                task.location.target = link;
             }
             return self;
         }
@@ -213,11 +213,11 @@ impl TaskParser {
             .unwrap_or_default();
 
         if let Some(task) = self.task.as_mut() {
-            task.set_origin_folder(origin_folder);
-            if task.task_mode == TaskEdit::VIEW {
-                task.target = resolved;
+            task.location.set_origin_folder(origin_folder);
+            if task.config.mode == TaskEdit::VIEW {
+                task.location.target = resolved;
             } else {
-                task.target = link;
+                task.location.target = link;
             }
         }
 
@@ -239,12 +239,12 @@ impl TaskParser {
                     .index_path
                     .parent()
                     .unwrap_or(Path::new(""))
-                    .join(&task.target);
+                    .join(&task.location.target);
 
                 if !relative_path.exists() {
                     return Err(format!(
                         "Parsing {:?}, Arquivo de tarefa não encontrado: {}",
-                        self.index_path, task.target
+                        self.index_path, task.location.target
                     ));
                 }
             }

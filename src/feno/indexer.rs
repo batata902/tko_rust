@@ -280,7 +280,7 @@ impl Indexer {
 
     /// Parse the index file, silently dropping task lines whose README is missing.
     pub fn load_index_lines_removing_broken(&mut self) -> std::io::Result<()> {
-        let content = decoder::Decoder::load(&self.index_path, false)?;
+        let content = decoder::decoder::load(&self.index_path, false)?;
         let mut lines = Vec::new();
 
         for raw in content.lines() {

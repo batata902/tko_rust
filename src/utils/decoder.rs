@@ -1,4 +1,4 @@
-pub mod Decoder {
+pub mod decoder {
     use std::path::Path;
     use unicode_normalization::UnicodeNormalization;
     use std::fs;
@@ -26,7 +26,7 @@ pub mod Decoder {
     }
 
     pub fn save<P: AsRef<Path>>(file_path: P, content: String) -> io::Result<()> {
-        let mut path = Path::new(file_path.as_ref());
+        let path = Path::new(file_path.as_ref());
 
         if let Some(base_path) = path.parent() {
             fs::create_dir_all(base_path)?;

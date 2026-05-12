@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use std::fmt;
 
 use crate::game::quest_grader::Elem;
-use crate::game::task::TaskMain;
+use crate::game::task_config::{TaskMain};
 use crate::game::tree_item::HasTreeIdentity;
 use crate::game::{tree_item::TreeItem, tree_item::TreeUi, quest_grader::QuestGrader, task::Task};
 use crate::utils::text::{AddValue, Text};
@@ -119,16 +119,16 @@ impl Quest {
 }
 
     pub fn sort_tasks_by_title(&mut self) {
-        self.__tasks.sort_by_key(|t| t.task.get_title().to_string());
+        self.__tasks.sort_by_key(|t| t.identity.get_title().to_string());
     }
 
     pub fn get_xp(&self, include_main_perk: bool, include_side: bool) -> (f64, f64) {
         let mut tasks_info: Vec<Elem> = Vec::new();
         for t in &self.__tasks {
-            if [TaskMain::MAIN, TaskMain::PERK].contains(&t.task_path) && !include_main_perk {
+            if [TaskMain::MAIN, TaskMain::PERK].contains(&t.config.path) && !include_main_perk {
                 continue;
             }
-            if t.task_path == TaskMain::SIDE && !include_side {
+            if t.config.path == TaskMain::SIDE && !include_side {
                 continue;
             }
             let percent = (t.get_rate_percent() * t.get_quality_percent()) / 100.0;

@@ -303,7 +303,7 @@ impl RText {
         let mut replaced = 0usize;
         let max = count.unwrap_or(usize::MAX);
 
-        let mut push = |result: &mut Vec<Run>, style: &str, text: &str| {
+        let push = |result: &mut Vec<Run>, style: &str, text: &str| {
             if text.is_empty() { return; }
             match result.last_mut() {
                 Some(last) if last.0 == style => last.1.push_str(text),

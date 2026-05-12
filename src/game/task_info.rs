@@ -1,21 +1,21 @@
 use std::collections::HashMap;
 
-pub mod Keys {
-    pub static rate_str: &str = "rate";
-    pub static ia_concept_str: &str = "concept";
-    pub static ia_problem_str: &str = "problem";
-    pub static ia_coding_str: &str = "code";
-    pub static ia_debug_str: &str = "debug";
-    pub static ia_refactor_str: &str = "refactor";
-    pub static guided_str: &str = "guided";
+pub mod keys {
+    pub static RATE_STR: &str = "rate";
+    pub static IA_CONCEPT_STR: &str = "concept";
+    pub static IA_PROBLEM_STR: &str = "problem";
+    pub static IA_CODING_STR: &str = "code";
+    pub static IA_DEBUG_STR: &str = "debug";
+    pub static IA_REFACTOR_STR: &str = "refactor";
+    pub static GUIDED_STR: &str = "guided";
 
-    pub static study_str: &str = "study";
-    pub static friend_str: &str = "friend";
-    pub static feedback_str: &str = "self";
+    pub static STUDY_STR: &str = "study";
+    pub static FRIEND_STR: &str = "friend";
+    pub static FEEDBACK_STR: &str = "self";
 }
 
-#[derive(Clone)]
-pub struct TaskInfo {
+#[derive(Debug, Clone)]
+pub struct TaskSelfInfo {
     pub rate: i32,
 
     pub study: i32,
@@ -31,7 +31,7 @@ pub struct TaskInfo {
     pub ia_refactor: bool
 }
 
-impl TaskInfo {
+impl TaskSelfInfo {
     pub fn new() -> Self {
         Self { 
             rate: 0, 
@@ -49,7 +49,7 @@ impl TaskInfo {
         }
     }
 
-    pub fn copy_quality_from(&mut self, other: TaskInfo) {
+    pub fn copy_quality_from(&mut self, other: TaskSelfInfo) {
         self.feedback = other.feedback;
         self.friend = other.friend;
 
@@ -60,8 +60,8 @@ impl TaskInfo {
         self.ia_refactor = other.ia_refactor;
     }
 
-    pub fn clone(&mut self) -> &mut TaskInfo {
-        TaskInfo::load_from_kv(self, &self.get_kv())
+    pub fn clone(&mut self) -> &mut TaskSelfInfo {
+        TaskSelfInfo::load_from_kv(self, &self.get_kv())
     }
 
     pub fn set_study(&mut self, value: &String) -> &mut Self {
@@ -93,35 +93,35 @@ impl TaskInfo {
     }
 
     pub fn load_from_kv(&mut self, kv: &HashMap<String, String>) -> &mut Self {
-        if kv.contains_key(Keys::rate_str) {
-            self.set_rate(kv.get(Keys::rate_str).unwrap());
+        if kv.contains_key(keys::RATE_STR) {
+            self.set_rate(kv.get(keys::RATE_STR).unwrap());
         }
-        if kv.contains_key(Keys::study_str) {
-            self.set_study(kv.get(Keys::study_str).unwrap());
+        if kv.contains_key(keys::STUDY_STR) {
+            self.set_study(kv.get(keys::STUDY_STR).unwrap());
         }
 
-        self.friend = kv.get(Keys::friend_str)
+        self.friend = kv.get(keys::FRIEND_STR)
             .cloned()
             .unwrap_or("".to_string());
-        self.feedback = kv.get(Keys::feedback_str)
+        self.feedback = kv.get(keys::FEEDBACK_STR)
             .cloned()
             .unwrap_or("0".to_string()) == "1";
-        self.guided = kv.get(Keys::guided_str)
+        self.guided = kv.get(keys::GUIDED_STR)
             .cloned()
             .unwrap_or("0".to_string()) == "1";
-        self.ia_concept = kv.get(Keys::ia_concept_str)
+        self.ia_concept = kv.get(keys::IA_CONCEPT_STR)
             .cloned()
             .unwrap_or("0".to_string()) == "1";
-        self.ia_problem = kv.get(Keys::ia_problem_str)
+        self.ia_problem = kv.get(keys::IA_PROBLEM_STR)
             .cloned()
             .unwrap_or("0".to_string()) == "1";
-        self.ia_code = kv.get(Keys::ia_coding_str)
+        self.ia_code = kv.get(keys::IA_CODING_STR)
             .cloned()
             .unwrap_or("0".to_string()) == "1";
-        self.ia_debug = kv.get(Keys::ia_debug_str)
+        self.ia_debug = kv.get(keys::IA_DEBUG_STR)
             .cloned()
             .unwrap_or("0".to_string()) == "1";
-        self.ia_refactor = kv.get(Keys::ia_refactor_str)
+        self.ia_refactor = kv.get(keys::IA_REFACTOR_STR)
             .cloned()
             .unwrap_or("0".to_string()) == "1";
 
@@ -132,34 +132,34 @@ impl TaskInfo {
         let mut kv: HashMap<String, String> = HashMap::new();
         
         if self.feedback {
-            kv.insert(Keys::feedback_str.to_string(), "1".to_string());
+            kv.insert(keys::FEEDBACK_STR.to_string(), "1".to_string());
         }
         if self.rate != 0 {
-            kv.insert(Keys::rate_str.to_string(), self.rate.to_string());
+            kv.insert(keys::RATE_STR.to_string(), self.rate.to_string());
         }
         if self.study != 0 {
-            kv.insert(Keys::study_str.to_string(), self.study.to_string());
+            kv.insert(keys::STUDY_STR.to_string(), self.study.to_string());
         }
         if self.friend != "".to_string() {
-            kv.insert(Keys::friend_str.to_string(), self.friend.clone());
+            kv.insert(keys::FRIEND_STR.to_string(), self.friend.clone());
         }
         if self.guided {
-            kv.insert(Keys::guided_str.to_string(), "1".to_string());
+            kv.insert(keys::GUIDED_STR.to_string(), "1".to_string());
         }
         if self.ia_concept {
-            kv.insert(Keys::ia_concept_str.to_string(), "1".to_string());
+            kv.insert(keys::IA_CONCEPT_STR.to_string(), "1".to_string());
         }
         if self.ia_problem {
-            kv.insert(Keys::ia_problem_str.to_string(), "1".to_string());
+            kv.insert(keys::IA_PROBLEM_STR.to_string(), "1".to_string());
         }
         if self.ia_code {
-            kv.insert(Keys::ia_coding_str.to_string(), "1".to_string());
+            kv.insert(keys::IA_CODING_STR.to_string(), "1".to_string());
         }
         if self.ia_debug {
-            kv.insert(Keys::ia_debug_str.to_string(), "1".to_string());
+            kv.insert(keys::IA_DEBUG_STR.to_string(), "1".to_string());
         }
         if self.ia_refactor {
-            kv.insert(Keys::ia_refactor_str.to_string(), "1".to_string());
+            kv.insert(keys::IA_REFACTOR_STR.to_string(), "1".to_string());
         }
 
         kv
