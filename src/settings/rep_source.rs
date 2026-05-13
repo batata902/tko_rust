@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 use std::fmt;
 use serde::{Deserialize, Serialize};
 
+use crate::settings::git_cache::GitCache;
+
 // ─── SourceType ───────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -23,11 +25,8 @@ impl fmt::Display for SourceType {
     }
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 pub const STUDENT_SANDBOX_NAME: &str = "sandbox";
-
-// ─── Keys ─────────────────────────────────────────────────────────────────────
 
 pub struct Keys;
 
@@ -42,14 +41,6 @@ impl Keys {
     pub const BRANCH: &'static str = "branch";
 }
 
-// ─── GitCache (stub) ──────────────────────────────────────────────────────────
-
-pub trait GitCache {
-    fn get(&self, url: &str) -> PathBuf;
-}
-
-// ─── RepSource ────────────────────────────────────────────────────────────────
-
 pub struct RepSource {
     pub name: String,
     pub target: String,
@@ -61,11 +52,11 @@ pub struct RepSource {
     pub tasks: Option<HashMap<String, String>>,
     pub rep_local_workspace: Option<PathBuf>,
     pub rep_cache_folder: Option<PathBuf>,
-    pub git_cache: Option<Box<dyn GitCache>>,
+    pub git_cache: Option<GitCache>,
 }
 
 impl RepSource {
-    pub fn new(alias: &str, git_cache: Option<Box<dyn GitCache>>) -> Self {
+    pub fn new(alias: &str, git_cache: Option<GitCache>) -> Self {
         Self {
             name: alias.to_string(),
             target: String::new(),
@@ -81,7 +72,7 @@ impl RepSource {
         }
     }
 
-    pub fn set_git_cache(mut self, git_cache: Box<dyn GitCache>) -> Self {
+    pub fn set_git_cache(mut self, git_cache: GitCache) -> Self {
         self.git_cache = Some(git_cache);
         self
     }
@@ -103,12 +94,7 @@ impl RepSource {
         self
     }
 
-    pub fn get_filters(
-        &self,
-    ) -> (
-        Option<&HashMap<String, String>>,
-        Option<&HashMap<String, String>>,
-    ) {
+    pub fn get_filters(&mut self) -> (Option<&HashMap<String, String>>, Option<&HashMap<String, String>>) {
         (self.quests.as_ref(), self.tasks.as_ref())
     }
 
@@ -151,30 +137,25 @@ impl RepSource {
         self.source_type == SourceType::LocalFile
     }
 
-    pub fn get_source_readme(&self) -> Result<PathBuf, String> {
-        match self.source_type {
-            SourceType::LocalFile => {
-                let file = Path::new(&self.target).join(&self.index);
-                if file.is_absolute() {
-                    Ok(file)
-                } else {
-                    Ok(self.get_repo_workspace()?.join(&file))
-                }
-            }
-            SourceType::GitSource => Ok(self.get_source_folder()?.join(&self.index)),
+    pub fn get_source_readme(&self, verbose: bool) -> Result<PathBuf, String> {
+        match self.get_source_folder(verbose) {
+            Ok(folder) => Ok(folder.join(self.index)),
+            Err(e) => Err(e)
         }
     }
 
-    pub fn get_source_folder(&self) -> Result<PathBuf, String> {
-        match self.source_type {
-            SourceType::LocalFile => Ok(PathBuf::from(&self.target)),
-            SourceType::GitSource => {
-                let cache = self
-                    .git_cache
-                    .as_ref()
-                    .ok_or("Git cache is not set for git source")?;
-                Ok(cache.get(self.get_url_link()))
+    pub fn get_source_folder(&self, verbose: bool) -> Result<PathBuf, String> {
+        if self.is_sandbox_source() {
+            return self.get_workspace().cloned();
+        }
+        if self.source_type == SourceType::LocalFile {
+            return Ok(PathBuf::from(self.target));
+        }
+        if self.source_type == SourceType::GitSource {
+            if self.git_cache.is_none() {
+                return Err("Git cache is not set for git source".to_string());
             }
+            let repodir = self.git_cache.unwrap()
         }
     }
 
@@ -199,7 +180,7 @@ impl RepSource {
             .ok_or_else(|| "Local cache folder is not set".to_string())
     }
 
-    pub fn get_repo_workspace(&self) -> Result<&PathBuf, String> {
+    pub fn get_workspace(&self) -> Result<&PathBuf, String> {
         self.rep_local_workspace
             .as_ref()
             .ok_or_else(|| "Local workspace is not set".to_string())

@@ -49,7 +49,7 @@ impl GitCache {
         Ok(())
     }
 
-    pub fn repo_dir(&self, url: &str) -> PathBuf {
+    pub fn __repo_dir(&self, url: &str) -> PathBuf {
         let mut hasher = Sha1::new();
         hasher.update(url.as_bytes());
         let digest = hex::encode(hasher.finalize());
@@ -57,11 +57,11 @@ impl GitCache {
         self.cache_dir.join(digest)
     }
 
-    pub fn lock_path(&self, repo_path: &Path) -> PathBuf {
+    pub fn __lock_path(&self, repo_path: &Path) -> PathBuf {
         repo_path.with_extension("lock")
     }
 
-    fn git(&self, args: &[&str], cwd: Option<&Path>) -> Result<(), String> {
+    fn _git(&self, args: &[&str], cwd: Option<&Path>) -> Result<(), String> {
         let mut cmd = Command::new("git");
 
         cmd.args(args)
@@ -131,7 +131,7 @@ impl GitCache {
         age > self.max_age
     }
 
-    pub fn acquire_lock(&self, lock_path: &Path) -> std::io::Result<FileLock> {
+    pub fn __acquire_lock(&self, lock_path: &Path) -> std::io::Result<FileLock> {
         Ok(FileLock::new(lock_path).unwrap())
     }
 
@@ -170,5 +170,32 @@ impl GitCache {
         }
 
         Ok(repo)
+    }
+
+    pub fn __clone(&self, url: &str, path: &Path) -> bool {
+        match self._git(
+            &["clone", "--depth", "1", "--filter=blob:none", "--no-single-branch"], 
+            url,
+                path.to_str()
+        ) {
+            Ok(_) => true,
+            Err(_) => false
+        }
+    }
+
+    pub fn get_repo_dir(&self, url: &str, verbose: bool) -> Option<&Path> {
+        let repo: PathBuf = self.__repo_dir(url);
+        let lock_path: PathBuf = self.__lock_path(repo.as_path());
+
+        {
+            let _lock = self.__acquire_lock(&lock_path);
+            if !repo.exists() {
+                if verbose {
+                    eprintln!("Cloning {} into cache...", url);
+                }
+                let ok = self.
+            }
+        }
+
     }
 }

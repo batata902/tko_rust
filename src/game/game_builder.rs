@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::io::Write;
 use std::{fs, io};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use crate::game::quest;
 use crate::game::{
     quest_parser::QuestParser, 
     task_parser::TaskParser,
@@ -47,7 +48,16 @@ impl GameBuilder {
             Ok(file) => {
                 self.__ensure_sandbox_readme_fixed(&file);
                 let _content: String = self.load_content(&file).unwrap();
+                self.__parse_file_content(&_content);
+
+                let quest_filters = {
+                    let (qf, _) = self.source.get_filters();
+                    qf.cloned()
+                };
                 
+                self.__remove_empty_and_other_language_and_filtered(_language, quest_filters);
+                self.__create_
+            
             },
             Err(e) => {
                 if self.verbose {
@@ -291,6 +301,23 @@ impl GameBuilder {
         }
 
         self
+    }
+
+    pub fn collect_quests(&self) -> HashMap<String, &Quest> {
+        let mut quests: HashMap<String, &Quest> = HashMap::new();
+        for quest in self.quests.values() {
+            quests.insert(quest.identity.get_full_key(), quest);
+        }
+        quests
+    }
+
+    pub fn __create_requirement_pointers(&self) -> () {
+        let (quests, tasks) = self.source.get_filters();
+        if !quests.is_none() || !tasks.is_none() {
+            return;
+        }
+        let filename: Result<PathBuf, String>  = self.source.get_source_readme(self.verbose);
+        let quest = self.
     }
 
     pub fn __create_cross_references(&mut self) {
