@@ -17,24 +17,24 @@ use crate::utils::text::{AddValue, Text};
 // }
 
 #[derive(Clone)]
-pub struct Quest {
+pub struct Quest <'a> {
     pub identity: TreeItem,
     pub ui: TreeUi,
     pub line_number: usize,
     pub line: String,
-    __tasks: Vec<Task>,
-    requires: Vec<String>,
-    requires_ptr: Vec<Quest>,
-    required_by_ptr: Vec<Quest>,
+    pub __tasks: Vec<Task>,
+    pub requires: Vec<String>,
+    pub requires_ptr: Vec<&'a Quest <'a>>,
+    pub required_by_ptr: Vec<&'a Quest <'a>>,
     pub skills: HashMap<String, i32>,
     pub languages: Vec<String>,
     pub min_percent_completion: i32,
-    filename: String,
+    pub filename: String,
     pub remote_name: String,
-    __is_reachable: bool
+    pub __is_reachable: bool
 }
 
-impl Quest {
+impl <'a> Quest <'a> {
     pub fn new(title: Option<String>, key: Option<String>) -> Self {
         let title = title.unwrap_or_default();
         let key = key.unwrap_or_default();
@@ -194,7 +194,7 @@ impl Quest {
     }
 }
 
-impl fmt::Display for Quest {
+impl <'a> fmt::Display for Quest <'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let key = if self.identity.get_full_key() == self.identity.get_title() {
             String::new()
@@ -205,7 +205,7 @@ impl fmt::Display for Quest {
     }
 }
 
-impl HasTreeIdentity for Quest {
+impl <'a> HasTreeIdentity for Quest <'a> {
     fn identity(&self) -> &TreeItem {
         &self.identity
     }

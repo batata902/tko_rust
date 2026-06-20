@@ -82,7 +82,7 @@ impl GitCache {
     }
 
     pub fn clone_repo(&self, url: &str, path: &Path) -> Result<(), String> {
-        self.git(
+        self._git(
             &[
                 "clone",
                 "--depth",
@@ -96,10 +96,10 @@ impl GitCache {
         )
     }
 
-    pub fn update(&mut self, repo: &Path) -> Result<(), String> {
-        self.git(&["fetch", "--prune", "origin"], Some(repo))?;
-        self.git(&["reset", "--hard", "origin/HEAD"], Some(repo))?;
-        self.git(&["clean", "-fd"], Some(repo))?;
+    pub fn _update(&mut self, repo: &Path) -> Result<(), String> {
+        self._git(&["fetch", "--prune", "origin"], Some(repo))?;
+        self._git(&["reset", "--hard", "origin/HEAD"], Some(repo))?;
+        self._git(&["clean", "-fd"], Some(repo))?;
 
         self.updated
             .insert(repo.to_string_lossy().to_string(), true);
@@ -107,7 +107,7 @@ impl GitCache {
         Ok(())
     }
 
-    pub fn is_expired(&self, repo: &Path) -> bool {
+    pub fn _is_expired(&self, repo: &Path) -> bool {
         let fetch_head = repo.join(".git").join("FETCH_HEAD");
 
         if !fetch_head.exists() {
@@ -136,10 +136,10 @@ impl GitCache {
     }
 
     pub fn get(&mut self, url: &str) -> Result<PathBuf, String> {
-        let repo = self.repo_dir(url);
-        let lock_path = self.lock_path(&repo);
+        let repo = self.__repo_dir(url);
+        let lock_path = self.__lock_path(&repo);
 
-        let _lock = self.acquire_lock(&lock_path).map_err(|e| e.to_string())?;
+        let _lock = self.__acquire_lock(&lock_path).map_err(|e| e.to_string())?;
 
         // clone
         if !repo.exists() {
@@ -155,13 +155,13 @@ impl GitCache {
             .copied()
             .unwrap_or(false);
 
-        let should_update = self.is_expired(&repo)
+        let should_update = self._is_expired(&repo)
             || (self.update_mode == UpdateMode::ALWAYS && !updated_flag);
 
         if should_update {
             println!("Updating cache for {}...", url);
 
-            if let Err(_) = self.update(&repo) {
+            if let Err(_) = self._update(&repo) {
                 println!("Failed to update. Re-cloning...");
 
                 let _ = fs::remove_dir_all(&repo);
@@ -174,16 +174,15 @@ impl GitCache {
 
     pub fn __clone(&self, url: &str, path: &Path) -> bool {
         match self._git(
-            &["clone", "--depth", "1", "--filter=blob:none", "--no-single-branch"], 
-            url,
-                path.to_str()
+            &["clone", "--depth", "1", "--filter=blob:none", "--no-single-branch", url],
+                Some(path)
         ) {
             Ok(_) => true,
             Err(_) => false
         }
     }
 
-    pub fn get_repo_dir(&self, url: &str, verbose: bool) -> Option<&Path> {
+    pub fn get_repo_dir(&mut self, url: &str, verbose: bool) -> Option<PathBuf> {
         let repo: PathBuf = self.__repo_dir(url);
         let lock_path: PathBuf = self.__lock_path(repo.as_path());
 
@@ -193,9 +192,34 @@ impl GitCache {
                 if verbose {
                     eprintln!("Cloning {} into cache...", url);
                 }
-                let ok = self.
+                let ok = self.__clone(url, &repo);
+                if !ok {
+                    if verbose {
+                        eprintln!("Failed to clone {}. Removing cache directory...", url);
+                    }
+                    let _ = fs::remove_dir_all(repo);
+                    return None;
+                }
+            }
+
+            if self._is_expired(&repo) || (self.update_mode == UpdateMode::ALWAYS && !self.updated.get(&repo.to_str().unwrap().to_string()).is_none()) {
+                match self._update(&repo) {
+                    Ok(_) => {
+                        if verbose {
+                            eprintln!("Updating cache for {}...", url);
+                        }
+                    },
+                    Err(_) => {
+                        if verbose {
+                            eprintln!("Failed to update cache for {}. Removing and re-cloning...", url);
+                        }
+                        let _ = fs::remove_dir_all(&repo);
+                        self.__clone(url, &repo);
+                    }
+                }
             }
         }
-
+    
+        Some(repo)
     }
 }

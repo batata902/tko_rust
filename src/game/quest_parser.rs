@@ -6,20 +6,20 @@ use crate::utils::get_md_link::get_md_link;
 
 
 pub struct QuestParser <'a> {
-    source_alias: &'a str,
-    quest: Quest,
+    source_alias: String,
+    quest: Quest <'a>,
     line: String,
     line_num: usize,
     filename: PathBuf
 }
 
 impl <'a> QuestParser <'a> {
-    pub fn new(source_alias: &'a str) -> Self {
+    pub fn new(source_alias: String) -> Self {
         let mut quest = Quest::new(None, None);
         quest.identity.set_remote_name(&source_alias);
 
         Self { 
-            source_alias, 
+            source_alias: source_alias, 
             quest,
             line: String::new(), 
             line_num: 0, 
@@ -27,7 +27,7 @@ impl <'a> QuestParser <'a> {
         }
     }
 
-    pub fn finish_quest(&mut self) -> Quest {
+    pub fn finish_quest(&mut self) -> Quest <'a> {
         let mut quest = self.quest.clone();
 
         if quest.identity.get_key().is_empty() {

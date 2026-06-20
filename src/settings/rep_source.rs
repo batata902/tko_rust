@@ -125,7 +125,7 @@ impl RepSource {
         }
     }
 
-    pub fn get_url_link(&self) -> &str {
+    pub fn get_url_link(&mut self) -> &str {
         &self.target
     }
 
@@ -137,33 +137,36 @@ impl RepSource {
         self.source_type == SourceType::LocalFile
     }
 
-    pub fn get_source_readme(&self, verbose: bool) -> Result<PathBuf, String> {
+    pub fn get_source_readme(&mut self, verbose: bool) -> Result<PathBuf, String> {
         match self.get_source_folder(verbose) {
-            Ok(folder) => Ok(folder.join(self.index)),
+            Ok(folder) => Ok(folder.join(self.index.clone())),
             Err(e) => Err(e)
         }
     }
 
-    pub fn get_source_folder(&self, verbose: bool) -> Result<PathBuf, String> {
+    pub fn get_source_folder(&mut self, verbose: bool) -> Result<PathBuf, String> {
         if self.is_sandbox_source() {
             return self.get_workspace().cloned();
         }
         if self.source_type == SourceType::LocalFile {
-            return Ok(PathBuf::from(self.target));
+            return Ok(PathBuf::from(self.target.clone()));
         }
         if self.source_type == SourceType::GitSource {
             if self.git_cache.is_none() {
                 return Err("Git cache is not set for git source".to_string());
             }
-            let repodir = self.git_cache.unwrap()
+            let url_link = self.get_url_link().to_string();
+            let repodir = self.git_cache.as_mut().unwrap().get_repo_dir(&url_link, verbose);
+            if repodir.is_none() {
+                return Err("Failed to get repository directory".to_string());
+            }
+            return Ok(repodir.unwrap().to_path_buf());
         }
+
+        Err("Unknown source type".to_string())
     }
 
-    pub fn set_filters(
-        mut self,
-        quests: Option<HashMap<String, String>>,
-        tasks: Option<HashMap<String, String>>,
-    ) -> Self {
+    pub fn set_filters(mut self, quests: Option<HashMap<String, String>>, tasks: Option<HashMap<String, String>>) -> Self {
         self.quests = quests;
         self.tasks = tasks;
         self
@@ -186,26 +189,15 @@ impl RepSource {
             .ok_or_else(|| "Local workspace is not set".to_string())
     }
 
-    pub fn get_source_workspace(&self) -> Result<PathBuf, String> {
-        if self.name == STUDENT_SANDBOX_NAME {
-            Ok(self.get_repo_workspace()?.join(&self.target))
-        } else {
-            Ok(self.get_repo_workspace()?.join(&self.name))
-        }
-    }
-
     pub fn get_task_workspace(&self, task_key: &str) -> Result<PathBuf, String> {
         if !self.is_read_only() {
-            return Err(
-                "Source is not read-only, task workspace is the same as source workspace"
-                    .to_string(),
-            );
+            return Err("Source is not read-only, task workspace is the same as source workspace".to_string());
         }
-        Ok(self.get_source_workspace()?.join(task_key))
+        
+        Ok(self.get_workspace().unwrap().join(task_key))
     }
 
     pub fn load_from_dict(mut self, data: &serde_json::Value) -> Self {
-        // name / backward-compat aliases
         for key in &["name", "alias", "database"] {
             if let Some(v) = data[key].as_str() {
                 self.name = v.to_string();

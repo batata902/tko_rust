@@ -3,7 +3,6 @@ use std::io::Write;
 use std::{fs, io};
 use std::path::{Path, PathBuf};
 
-use crate::game::quest;
 use crate::game::{
     quest_parser::QuestParser, 
     task_parser::TaskParser,
@@ -15,16 +14,16 @@ use crate::settings::rep_source::RepSource;
 use crate::utils::decoder::decoder;
 use crate::feno::indexer::fix_readme;
 
-pub struct GameBuilder {
+pub struct GameBuilder <'a> {
     source: RepSource,
     ordered_quests: Vec<String>,
-    quests: HashMap<String, Quest>,
-    active_quest: Option<Quest>,
+    quests: HashMap<String, Quest <'a>>,
+    active_quest: Option<Quest <'a>>,
     interactive: bool,
     verbose: bool
 }
 
-impl GameBuilder {
+impl <'a> GameBuilder <'a> {
     pub fn new(source: RepSource, verbose: bool) -> Self {
         Self { 
             source, 
@@ -43,7 +42,7 @@ impl GameBuilder {
     }
 
     pub fn build_from(&mut self, _language: &str) -> &mut Self {
-        let filename = self.source.get_source_readme();
+        let filename = self.source.get_source_readme(self.verbose);
         match filename {
             Ok(file) => {
                 self.__ensure_sandbox_readme_fixed(&file);
@@ -56,8 +55,10 @@ impl GameBuilder {
                 };
                 
                 self.__remove_empty_and_other_language_and_filtered(_language, quest_filters);
-                self.__create_
-            
+                self.__create_requirement_pointers();
+                self.__create_cross_references();
+
+                return self;            
             },
             Err(e) => {
                 if self.verbose {
@@ -66,8 +67,6 @@ impl GameBuilder {
                 return self;
             }
         }
-
-        self
     }
 
     pub fn load_content(&self, filename: &Path) -> io::Result<String> {
@@ -99,23 +98,23 @@ impl GameBuilder {
             if let Some(parent) = filename.parent() {
                 fs::create_dir_all(parent)?;
                 let mut file: fs::File = fs::File::create(filename)?;
-                file.write_all(format!("# {}\n\n", self.source.name).as_bytes());
+                let _ = file.write_all(format!("# {}\n\n", self.source.name).as_bytes());
             }
         }
-        fix_readme(fs::canonicalize(filename)?, self.source.get_repo_workspace().unwrap(), &self.source.name, false, false, true);
+        let _ = fix_readme(fs::canonicalize(filename)?, self.source.get_workspace().unwrap(), &self.source.name, false, false, true);
 
         Ok(())
     }
 
     pub fn __parse_file_content(&mut self, content: &String) {
         let lines: Vec<&str> = content.lines().collect();
-        let alias = self.source.name.clone();
+        let alias: String = self.source.name.clone();
 
-        match self.source.get_source_readme() {
+        match self.source.get_source_readme(self.verbose) {
             Ok(filename) => {
                 for (line_num, line) in lines.iter().enumerate() {
                     // obs.: Alterar QuestParser para receber referência ao invés de clone() (Otimização)
-                    let mut quest_parser = QuestParser::new(&alias); 
+                    let mut quest_parser: QuestParser<'_> = QuestParser::new(alias.clone()); 
                     let quest = quest_parser.parse_quest(&filename, line.to_string(), line_num);
                     if !quest.is_none() {
                         self.__add_quest(quest_parser.finish_quest());
@@ -149,7 +148,7 @@ impl GameBuilder {
         }
     }
 
-    pub fn __add_quest(&mut self, quest: Quest) -> &mut Quest {
+    pub fn __add_quest(&mut self, quest: Quest <'a>) -> &mut Quest <'a> {
         let key = quest.identity.get_full_key().to_string();
 
         if !self.quests.contains_key(&key) {
@@ -165,7 +164,7 @@ impl GameBuilder {
         self.quests.get_mut(&key).unwrap()
     }
 
-    pub fn __get_active_quest(&mut self) -> Option<&mut Quest> {
+    pub fn __get_active_quest(&mut self) -> Option<&mut Quest <'a>> {
         if self.active_quest.is_none() {
             let qkey = String::from("_sem_quest");
             return Some(self.__add_quest(Quest::new(Some("Sem Quest".to_string()), Some(qkey))));
@@ -180,7 +179,6 @@ impl GameBuilder {
     }
 
     pub fn add_filtered_quests(&mut self, quest_filters: Option<&HashMap<String, String>>) {
-        // Mesmo comportamento do Python
         if self.source.is_sandbox_source() {
             return;
         }
@@ -303,21 +301,34 @@ impl GameBuilder {
         self
     }
 
-    pub fn collect_quests(&self) -> HashMap<String, &Quest> {
-        let mut quests: HashMap<String, &Quest> = HashMap::new();
+    pub fn collect_quests(&self) -> HashMap<String, Quest> {
+        let mut quests: HashMap<String, Quest> = HashMap::new();
         for quest in self.quests.values() {
-            quests.insert(quest.identity.get_full_key(), quest);
+            quests.insert(quest.identity.get_full_key(), quest.clone());
         }
         quests
     }
 
-    pub fn __create_requirement_pointers(&self) -> () {
+    pub fn __create_requirement_pointers(&mut self) -> () {
         let (quests, tasks) = self.source.get_filters();
         if !quests.is_none() || !tasks.is_none() {
             return;
         }
         let filename: Result<PathBuf, String>  = self.source.get_source_readme(self.verbose);
-        let quest = self.
+
+        let mut quests = self.collect_quests();
+        let mut quest_refs = quests.clone();
+
+        for q in quests.values_mut() {
+            for r in &q.requires {
+                if let Some(req) = &quest_refs.get_mut(r) {
+                    q.requires_ptr.push(req);
+
+                    req.required_by_ptr.push(q);
+                };     
+                
+            }
+        }
     }
 
     pub fn __create_cross_references(&mut self) {

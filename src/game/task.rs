@@ -158,47 +158,6 @@ impl Task {
         }
     }
 
-    pub fn get_rate_color(&self, value: i32, min_value: Option<i32>) -> String {
-        let prog = value;
-        if prog == 0 {
-            return String::from("c");
-        }
-        else if prog < min_value.unwrap_or(self.default_min_value) {
-            return String::from("r");
-        }
-        else if prog < 10 {
-            return String::from("y");
-        }
-        else if prog == 10 {
-            return String::from("g");
-        }
-        "w".to_string()
-    }
-
-    pub fn get_rate_symbol(&self, value: i32, min_value: Option<i32>) -> Text {
-        let min_value = min_value.unwrap_or(self.default_min_value);
-        let color = self.get_rate_color(value, Some(min_value));
-        let prog = value;
-        let mut text = Text::new(None, None);
-        if prog == 0 {
-            text.add(Some(AddValue::Str(Cow::Owned("x".to_string()))));
-            return text;
-        }
-        else if prog < min_value {
-            text.addf(color, Some(AddValue::Str(Cow::Owned(prog.to_string()))));
-            return text;
-        }
-        else if prog < 10 {
-            text.addf(color, Some(AddValue::Str(Cow::Owned(prog.to_string()))));
-            return text;
-        }
-        else if prog == 10 {
-            text.addf(color, Some(AddValue::Str(Cow::Borrowed(&symbols::CHECK.to_string()))));
-            return text;
-        }
-        text.add(Some(AddValue::Str(Cow::Owned("0".to_string()))));
-        text
-    }
 
     pub fn get_xp(&self) -> i32 {
         if self.xp == 0 {
